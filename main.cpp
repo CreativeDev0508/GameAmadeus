@@ -7,7 +7,7 @@
 
 using namespace std;
 
-#define MAX_TURNS 10
+#define MAX_TURNS 50
 
 const int kEnemyPredictVal = -5;
 const int maxX = 30;
@@ -196,8 +196,8 @@ int main()
         // Write an action using cout. DON'T FORGET THE "<< endl"
         // To debug: cerr << "Debug messages..." << endl;
         
-        bool dead = false;
-        aDirection = computeDirection(aDirection, gMyPos, dead, gMap);
+        //bool dead = false;
+        //aDirection = computeDirection(aDirection, gMyPos, dead, gMap);
         
         map<DIR, int> aMaxTurnMap = {{DOWN,0}, {UP,0}, {RIGHT,0}, {LEFT,0}};
         for(auto& aDirMap: aMaxTurnMap)
@@ -207,7 +207,17 @@ int main()
 		}
         cerr << "Loosing in " << computeMaxTurnBeforeDead(aDirection) << " turns !" << endl;
         
-        if (dead)
+		int maxValue = 0;      
+        for(auto& aDirMap: aMaxTurnMap)
+        {
+			if(maxValue <=  aDirMap.second)
+			{
+				aDirection = aDirMap.first;
+				maxValue = aDirMap.second;
+			}	
+        }
+        
+        if (maxValue == 0)
 			cout << "DEPLOY" << endl;
 		else
         	cout << dirToString[aDirection] << endl;
