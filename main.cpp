@@ -7,7 +7,9 @@
 
 using namespace std;
 
+#define MAX_TURNS 10
 
+typedef vector<vector<int> > MAP;
 vector<vector<int> > gMap(30, vector<int> (15, 0));
 pair<int, int> gMyPos;
 
@@ -43,24 +45,48 @@ pair<int, int> getNextPos(DIR iDir, const pair<int, int> &iCurrentPos)
 	return aOutput;
 }
 
-bool detectColision(DIR iDir, const pair<int, int> &iCurrentPos)
+bool detectColision(DIR iDir, const pair<int, int> &iCurrentPos, const MAP& iMap)
 {
 	pair<int, int> aNextPos = getNextPos(iDir, iCurrentPos);
-	return gMap[aNextPos.first][aNextPos.second] != 0;
+	return iMap[aNextPos.first][aNextPos.second] != 0;
 }
 
-DIR computeDirection(DIR iDir, const pair<int, int> &iCurrentPos, bool&dead)
+DIR computeDirection(DIR iDir, const pair<int, int> &iCurrentPos, bool&dead, const MAP& iMap)
 {
     int nbTurns = 0;
-    DIR aDir = iDir;
-    while(detectColision(aDir, iCurrentPos) && nbTurns < 4)
+    DIR aDir = iDir, forbiddenDir = static_cast<DIR>((iDir+2)%4);
+    while(detectColision(aDir, iCurrentPos, iMap) && nbTurns < 3)
     {
      	cerr  << "Collision detected, turning: (" << dirToString[aDir] << ", (" << iCurrentPos.first << "," << iCurrentPos.second << ")" << ", (" << getNextPos(aDir, iCurrentPos).first << "," <<getNextPos(aDir, iCurrentPos).second << ")" << endl;
         aDir = static_cast<DIR>((aDir+1)%4) ;
+        if(aDir == forbiddenDir)
+        {
+        	aDir = static_cast<DIR>((aDir+1)%4);
+		}
         nbTurns++;
 	}
-	dead = nbTurns == 4;
+	dead = nbTurns == 3;
     return aDir;
+}
+
+// in how many turn will we loose
+int computeMaxTurnBeforeDead(DIR iDir)
+{
+	if (detectColision(iDir, gMyPos, gMap))
+		return 0;
+	bool dead = false;
+	auto aPredMap = gMap;
+	auto aPredPos = gMyPos;
+	int aTurns = 0;
+	while(!dead && aTurns < MAX_TURNS)
+	{
+    	iDir = computeDirection(iDir, aPredPos, dead, aPredMap);
+    	
+    	aPredPos = getNextPos(iDir, aPredPos);
+    	aPredMap[aPredPos.first][aPredPos.second] = 10;
+    	aTurns++;
+    }
+    return aTurns;
 }
 
 /**
@@ -105,7 +131,15 @@ int main()
         // To debug: cerr << "Debug messages..." << endl;
         
         bool dead = false;
-        aDirection = computeDirection(aDirection, gMyPos, dead);
+        aDirection = computeDirection(aDirection, gMyPos, dead, gMap);
+        
+        map<DIR, int> aMaxTurnMap = {{DOWN,0}, {UP,0}, {RIGHT,0}, {LEFT,0}};
+        for(auto& aDirMap: aMaxTurnMap)
+        {
+        	aDirMap.second = computeMaxTurnBeforeDead(aDirMap.first);
+        	cerr << "Direction " << dirToString[aDirMap.first] << " will be loosing in " << aDirMap.second << " turns !" << endl;
+		}
+        cerr << "Loosing in " << computeMaxTurnBeforeDead(aDirection) << " turns !" << endl;
         
         if (dead)
 			cout << "DEPLOY" << endl;
