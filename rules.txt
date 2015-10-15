@@ -1,0 +1,48 @@
+The program:
+In this game, each player controls a drone which moves continually, leaving a trail of light behind it. The aim is to prevent your drone from touching any of the trails for the longest time possible.
+
+Your program receives game information including the positions of all drones in the arena every turn, and must output the next action for your drone to perform.
+
+The arena works as follows:
+The arena is a grid of 30x15 square spaces.
+The top-left corner cell has the coordinate (X=0, Y=0).
+The edges of the grid are connected, creating a torus-shaped arena. Meaning a drone that leaves the grid to the left will reappear on the right.
+Drones start at random positions.
+Drones in the arena MUST move every turn. They cannot stay in one place.
+Drones in the arena leave a light trail on the cells they pass through.
+If a drone comes into contact with any player's light trail, they are disqualified and forced out of the arena. The light trail remains.
+Drones are given 3 sets of helper bots at the start of the game which they can use with the DEPLOY command. The bots will create gaps in the trails they come into contact with. This command cannot be used on the first turn.
+Once each drone has received a command, the moves are all performed simultaneously. If 2 drones try to move into the same cell at once, they are both ejected from the arena.
+
+The drones can perform the following commands:
+UP,DOWN,RIGHT or LEFT: The drone will move in the given direction.
+DEPLOY: The drone will deploy one of his remaining set of helper bots, which will move instantly in a straight line until it meets a light trail, it will clear the cell it lands on making it possible for drones to pass through. The helper bots are lost for the remainder of the game.
+The drone will then proceed to move in the same direction as it did on the previous turn.
+
+Extra info concerning the helper bots:
+The helper bots perform their actions before any drones do.
+Helper bots fired by different players on the same turn may land on the same cell.
+If you attempt to deploy helper bots in such a way that they would meet a drone along their path, they will not deploy.
+The program must first read the initialization data from standard input. Then, within an infinite loop, read the contextual data from the standard input (bots and player positions) and provide to the standard output the desired instructions.
+
+The protocol is detailed below.
+
+Your program has 100ms maximum each round to send your instructions.
+INITIALIZATION INPUT:
+Line 1: playerCount: the number of players in the game. Each player is identified by their ID from 0 to playerCount - 1.
+Line 2: myId: your player ID.
+INPUT FOR ONE GAME TURN:
+Line 1: helperBots: the number of times you can still deploy helper bots.
+Next playerCount lines: for each player, 2 space-separated integers x , y : indicates the player's coordinates on the grid. 0 0 is the top-left corner. You will receive -1 -1 for players that are no longer in the arena.
+Next line: removalCount: the number of cells that were cleared by bots last turn.
+Next removalCount lines: 2 space-separated integers removeX , removeY : the coordinate of a cell which has been emptied.
+OUTPUT FOR ONE GAME TURN:
+A single line (followed by a carriage return) specifying your desired command:
+A move: LEFT RIGHT UP or DOWN.
+DEPLOY to clear an occupied cell.
+CONSTRAINTS:
+2 = playerCount = 4
+0 = myId < playerCount
+-1 = x < 30
+-1 = y < 15
+Response time per turn = 100ms
