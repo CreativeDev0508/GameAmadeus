@@ -64,7 +64,7 @@ DIR computeDirection(DIR iDir, const pair<int, int> &iCurrentPos, bool&dead, con
     DIR aDir = iDir, forbiddenDir = static_cast<DIR>((iDir+2)%4);
     while(detectColision(aDir, iCurrentPos, iMap) && nbTurns < 3)
     {
-     	cerr  << "Collision detected, turning: (" << dirToString[aDir] << ", (" << iCurrentPos.first << "," << iCurrentPos.second << ")" << ", (" << getNextPos(aDir, iCurrentPos).first << "," <<getNextPos(aDir, iCurrentPos).second << ")" << endl;
+     //	cerr  << "Collision detected, turning: (" << dirToString[aDir] << ", (" << iCurrentPos.first << "," << iCurrentPos.second << ")" << ", (" << getNextPos(aDir, iCurrentPos).first << "," <<getNextPos(aDir, iCurrentPos).second << ")" << endl;
         aDir = static_cast<DIR>((aDir+1)%4) ;
         if(aDir == forbiddenDir)
         {
@@ -102,7 +102,7 @@ void predictEnemyMove(int iID, pair<int, int>& iCurrentPos){
 
 	//nextMove = getNextPos(nextDir, iCurrentPos);
 	bool dead;
-	nextMove = computeDirection(enemyDir, iCurrentPos, dead, gMap);
+	nextMove = getNextPos(computeDirection(enemyDir, iCurrentPos, dead, gMap), iCurrentPos );
 	if(gMap[nextMove.first][nextMove.second] == 0)
 	gMap[nextMove.first][nextMove.second]= kEnemyPredictVal;
 
@@ -224,20 +224,23 @@ int main()
         	cerr << "Direction " << dirToString[aDirMap.first] << " will be loosing in " << aDirMap.second << " turns !" << endl;
 		}
 		
-		int maxValue = 0;      
+		int maxValue = 0;
+		DIR maxDir = aDirection;
         for(auto& aDirMap: aMaxTurnMap)
         {
 			if(maxValue <  aDirMap.second)
 			{
-				aDirection = aDirMap.first;
+				maxDir = aDirMap.first;
 				maxValue = aDirMap.second;
 			}	
         }
         
         if ((maxValue == 0 && helperBots>0) || deployPredict > maxValue + MARGIN)
 			cout << "DEPLOY" << endl;
-		else
+		else {
+			aDirection = maxDir;
         	cout << dirToString[aDirection] << endl;
+        }
         	
         firstTurn = false;
     }
