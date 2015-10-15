@@ -22,7 +22,7 @@ enum DIR : int {
 map<DIR, string> dirToString = {{DOWN,"DOWN"}, {UP,"UP"}, {RIGHT,"RIGHT"}, {LEFT,"LEFT"}};
 	
 
-pair<int, int> getNextPos(DIR iDir, iCurrentPos)
+pair<int, int> getNextPos(DIR iDir, const pair<int, int> &iCurrentPos)
 {
 	auto aOutput = iCurrentPos;
 	switch(iDir)
@@ -43,31 +43,24 @@ pair<int, int> getNextPos(DIR iDir, iCurrentPos)
 	return aOutput;
 }
 
-bool detectColision(DIR iDir, iCurrentPos)
+bool detectColision(DIR iDir, const pair<int, int> &iCurrentPos)
 {
 	pair<int, int> aNextPos = getNextPos(iDir, iCurrentPos);
 	return gMap[aNextPos.first][aNextPos.second] != 0;
 }
 
-DIR computeDirection(DIR iDir, iCurrentPos, bool&dead)
+DIR computeDirection(DIR iDir, const pair<int, int> &iCurrentPos, bool&dead)
 {
     int nbTurns = 0;
     DIR aDir = iDir;
     while(detectColision(aDir, iCurrentPos) && nbTurns < 4)
     {
-     cerr  << "Collision detected, turning: (" << dirToString[aDir] << ", (" << iCurrentPos.first << "," << iCurrentPos.second << ")" << ", (" << getNextPos(aDir).first << "," <<getNextPos(aDir).second << ")" << endl;
+     	cerr  << "Collision detected, turning: (" << dirToString[aDir] << ", (" << iCurrentPos.first << "," << iCurrentPos.second << ")" << ", (" << getNextPos(aDir, iCurrentPos).first << "," <<getNextPos(aDir, iCurrentPos).second << ")" << endl;
         aDir = static_cast<DIR>((aDir+1)%4) ;
         nbTurns++;
 	}
+	dead = nbTurns == 4;
     return aDir;
-}
-
-bool shouldDeploy(DIR iDir, iCurrentPos)
-{
-    bool dead = false;
-    pair<int, int> aNextPos = getNextPos(iDir, iCurrentPos);
-    DIR nextDirection = computeDirection(iDir, aNextPos, dead);
-    return dead;
 }
 
 /**
@@ -114,8 +107,8 @@ int main()
         bool dead = false;
         aDirection = computeDirection(aDirection, gMyPos, dead);
         
-        if (shouldDeploy(aDirection))
-			cout << "DEPLOY";
+        if (dead)
+			cout << "DEPLOY" << endl;
 		else
         	cout << dirToString[aDirection] << endl;
     }
