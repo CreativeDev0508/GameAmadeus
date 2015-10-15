@@ -87,19 +87,26 @@ bool validEnemy(int iX, int iY){
 	return (iX != -1 && iY != -1);
 }
 
-pair<int, int> predictEnemyMove(int iID, pair<int, int> iCurrentPos){
-	pair<int, int> nextMove{0,0};
-	DIR nextDir;
-
+DIR getEnemyDirection(int iID, pair<int, int>& iCurrentPos){
+	DIR enemyDir;
 	if(iCurrentPos.first - lastEnemyPos[iID].first)
-		nextDir = (iCurrentPos.first - lastEnemyPos[iID].first >= 1 ) ? RIGHT:LEFT;
+		enemyDir = (iCurrentPos.first - lastEnemyPos[iID].first >= 1 ) ? RIGHT:LEFT;
 	else
-		nextDir = (iCurrentPos.second - lastEnemyPos[iID].second >= 1 ) ? DOWN:UP;
-
-	nextMove = getNextPos(nextDir, iCurrentPos);
-	return nextMove;
+		enemyDir = (iCurrentPos.second - lastEnemyPos[iID].second >= 1 ) ? DOWN:UP;
+	return enemyDir;
 }
 
+void predictEnemyMove(int iID, pair<int, int>& iCurrentPos){
+	pair<int, int> nextMove{0,0};
+	DIR enemyDir = getEnemyDirection(iID, iCurrentPos);
+
+	//nextMove = getNextPos(nextDir, iCurrentPos);
+	bool dead;
+	nextMove = computeDirection(enemyDir, iCurrentPos, dead, gMap);
+	if(gMap[nextMove.first][nextMove.second] == 0)
+	gMap[nextMove.first][nextMove.second]= kEnemyPredictVal;
+
+}
 
 // in how many turn will we loose
 int computeMaxTurnBeforeDead(DIR iDir, const MAP& iMap)
@@ -119,6 +126,17 @@ int computeMaxTurnBeforeDead(DIR iDir, const MAP& iMap)
     	aTurns++;
     }
     return aTurns;
+}
+
+void firstTurnEnemyPrediction(pair<int, int> iPosition){
+	if (gMap[getNextPos(UP, iPosition).first][getNextPos(UP, iPosition).second] == 0)
+		gMap[getNextPos(UP, iPosition).first][getNextPos(UP, iPosition).second] = kEnemyPredictVal;
+	if (gMap[getNextPos(DOWN, iPosition).first][getNextPos(UP, iPosition).second] == 0)
+		gMap[getNextPos(DOWN, iPosition).first][getNextPos(UP, iPosition).second] = kEnemyPredictVal;
+	if (gMap[getNextPos(LEFT, iPosition).first][getNextPos(UP, iPosition).second] == 0)
+		gMap[getNextPos(LEFT, iPosition).first][getNextPos(UP, iPosition).second] = kEnemyPredictVal;
+	if (gMap[getNextPos(RIGHT, iPosition).first][getNextPos(UP, iPosition).second] == 0)
+		gMap[getNextPos(RIGHT, iPosition).first][getNextPos(UP, iPosition).second] = kEnemyPredictVal;
 }
 
 /**
@@ -150,32 +168,23 @@ int main()
             cin >> x >> y; cin.ignore();
             if (!validEnemy(x, y))
             	continue;
-
+            pair<int, int> aPosition = make_pair(x, y);
             gMap[x][y] = i+1;
 
             if(myId == i)
             {
-            	gMyPos = make_pair(x, y);
+            	gMyPos = aPosition;
 			}
             // try to predict next enemy position
             else if (validEnemy(lastEnemyPos[i].first, lastEnemyPos[i].second))
             {
-            	pair<int, int> enemyPos = make_pair(x,y);
-            	if (gMap[predictEnemyMove(i, enemyPos).first][predictEnemyMove(i, enemyPos).second] == 0)
-            		gMap[predictEnemyMove(i, enemyPos).first][predictEnemyMove(i, enemyPos).second]= kEnemyPredictVal;
+            	predictEnemyMove(i, aPosition);
+
             } else if (firstTurn)
             {
-            	if (gMap[getNextPos(UP, make_pair(x, y)).first][getNextPos(UP, make_pair(x, y)).second] == 0)
-            		gMap[getNextPos(UP, make_pair(x, y)).first][getNextPos(UP, make_pair(x, y)).second] = kEnemyPredictVal;
-            	if (gMap[getNextPos(DOWN, make_pair(x, y)).first][getNextPos(UP, make_pair(x, y)).second] == 0)
-            		gMap[getNextPos(DOWN, make_pair(x, y)).first][getNextPos(UP, make_pair(x, y)).second] = kEnemyPredictVal;
-            	if (gMap[getNextPos(LEFT, make_pair(x, y)).first][getNextPos(UP, make_pair(x, y)).second] == 0)
-            		gMap[getNextPos(LEFT, make_pair(x, y)).first][getNextPos(UP, make_pair(x, y)).second] = kEnemyPredictVal;
-            	if (gMap[getNextPos(RIGHT, make_pair(x, y)).first][getNextPos(UP, make_pair(x, y)).second] == 0)
-            		gMap[getNextPos(RIGHT, make_pair(x, y)).first][getNextPos(UP, make_pair(x, y)).second] = kEnemyPredictVal;
-            	
+            	firstTurnEnemyPrediction(aPosition);
 			}
-            lastEnemyPos[i]=make_pair(x, y);
+            lastEnemyPos[i]=aPosition;
         }
 
         // deploy helper bots
