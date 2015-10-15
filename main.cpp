@@ -7,12 +7,15 @@
 
 using namespace std;
 
+#define MAX_TURNS 50
+
 const int kEnemyPredictVal = -5;
 const int maxX = 30;
 const int maxY = 15;
 
-//int gMap[maxX][maxY] = {0};
-vector<vector<int> > gMap(30, vector<int> (15, 0));
+
+typedef vector<vector<int> > MAP;
+MAP gMap(30, vector<int> (15, 0));
 pair<int, int> gMyPos;
 map<int, pair<int, int>> lastEnemyPos;
 
@@ -48,23 +51,27 @@ pair<int, int> getNextPos(DIR iDir, const pair<int, int> &iCurrentPos)
 	return aOutput;
 }
 
-bool detectColision(DIR iDir, const pair<int, int> &iCurrentPos)
+bool detectColision(DIR iDir, const pair<int, int> &iCurrentPos, const MAP& iMap)
 {
 	pair<int, int> aNextPos = getNextPos(iDir, iCurrentPos);
-	return gMap[aNextPos.first][aNextPos.second] != 0;
+	return iMap[aNextPos.first][aNextPos.second] != 0;
 }
 
-DIR computeDirection(DIR iDir, const pair<int, int> &iCurrentPos, bool&dead)
+DIR computeDirection(DIR iDir, const pair<int, int> &iCurrentPos, bool&dead, const MAP& iMap)
 {
     int nbTurns = 0;
-    DIR aDir = iDir;
-    while(detectColision(aDir, iCurrentPos) && nbTurns < 4)
+    DIR aDir = iDir, forbiddenDir = static_cast<DIR>((iDir+2)%4);
+    while(detectColision(aDir, iCurrentPos, iMap) && nbTurns < 3)
     {
      	cerr  << "Collision detected, turning: (" << dirToString[aDir] << ", (" << iCurrentPos.first << "," << iCurrentPos.second << ")" << ", (" << getNextPos(aDir, iCurrentPos).first << "," <<getNextPos(aDir, iCurrentPos).second << ")" << endl;
         aDir = static_cast<DIR>((aDir+1)%4) ;
+        if(aDir == forbiddenDir)
+        {
+        	aDir = static_cast<DIR>((aDir+1)%4);
+		}
         nbTurns++;
 	}
-	dead = nbTurns == 4;
+	dead = nbTurns == 3;
     return aDir;
 }
 
@@ -89,14 +96,34 @@ pair<int, int> predictEnemyMove(int iID, pair<int, int> iCurrentPos){
 	DIR nextDir;
 
 	if(iCurrentPos.first - lastEnemyPos[iID].first)
-		DIR = (iCurrentPos.first - lastEnemyPos[iID].first >= 1 ) ? RIGHT:LEFT;
+		nextDir = (iCurrentPos.first - lastEnemyPos[iID].first >= 1 ) ? RIGHT:LEFT;
 	else
-		DIR = (iCurrentPos.second - lastEnemyPos[iID].second >= 1 ) ? DOWN:UP;
+		nextDir = (iCurrentPos.second - lastEnemyPos[iID].second >= 1 ) ? DOWN:UP;
 
 	nextMove = getNextPos(nextDir, iCurrentPos);
 	return nextMove;
 }
 
+
+// in how many turn will we loose
+int computeMaxTurnBeforeDead(DIR iDir)
+{
+	if (detectColision(iDir, gMyPos, gMap))
+		return 0;
+	bool dead = false;
+	auto aPredMap = gMap;
+	auto aPredPos = gMyPos;
+	int aTurns = 0;
+	while(!dead && aTurns < MAX_TURNS)
+	{
+    	iDir = computeDirection(iDir, aPredPos, dead, aPredMap);
+    	
+    	aPredPos = getNextPos(iDir, aPredPos);
+    	aPredMap[aPredPos.first][aPredPos.second] = 10;
+    	aTurns++;
+    }
+    return aTurns;
+}
 
 /**
  * Auto-generated code below aims at helping you parse
@@ -112,21 +139,23 @@ int main()
     cin >> myId; cin.ignore();
 
 	DIR aDirection = DOWN;
+	bool firstTurn = true;
 
     // game loop
     while (1) {
     	int helperBots;
     	cin >> helperBots; cin.ignore();
 
+		cleanMapPredictions();
+
         // read player trails
         for (int i = 0; i < playerCount; i++) {
             int x;
             int y;
             cin >> x >> y; cin.ignore();
-            if (validEnemy(x, y))
+            if (!validEnemy(x, y))
             	continue;
 
-            cleanMapPredictions();
             gMap[x][y] = i+1;
 
             if(myId == i)
@@ -139,13 +168,22 @@ int main()
             	pair<int, int> enemyPos = make_pair(x,y);
             	if (gMap[predictEnemyMove(i, enemyPos).first][predictEnemyMove(i, enemyPos).second] == 0)
             		gMap[predictEnemyMove(i, enemyPos).first][predictEnemyMove(i, enemyPos).second]= kEnemyPredictVal;
-            }
+            } else if (firstTurn)
+            {
+            	if (gMap[getNextPos(UP, make_pair(x, y)).first][getNextPos(UP, make_pair(x, y)).second] == 0)
+            		gMap[getNextPos(UP, make_pair(x, y)).first][getNextPos(UP, make_pair(x, y)).second] = kEnemyPredictVal;
+            	if (gMap[getNextPos(DOWN, make_pair(x, y)).first][getNextPos(UP, make_pair(x, y)).second] == 0)
+            		gMap[getNextPos(DOWN, make_pair(x, y)).first][getNextPos(UP, make_pair(x, y)).second] = kEnemyPredictVal;
+            	if (gMap[getNextPos(LEFT, make_pair(x, y)).first][getNextPos(UP, make_pair(x, y)).second] == 0)
+            		gMap[getNextPos(LEFT, make_pair(x, y)).first][getNextPos(UP, make_pair(x, y)).second] = kEnemyPredictVal;
+            	if (gMap[getNextPos(RIGHT, make_pair(x, y)).first][getNextPos(UP, make_pair(x, y)).second] == 0)
+            		gMap[getNextPos(RIGHT, make_pair(x, y)).first][getNextPos(UP, make_pair(x, y)).second] = kEnemyPredictVal;
+            	
+			}
             lastEnemyPos[i]=make_pair(x, y);
         }
 
         // deploy helper bots
-        int helperBots;
-        cin >> helperBots; cin.ignore();
         int removalCount;
         cin >> removalCount; cin.ignore();
         for (int i = 0; i < removalCount; i++) {
@@ -158,12 +196,32 @@ int main()
         // Write an action using cout. DON'T FORGET THE "<< endl"
         // To debug: cerr << "Debug messages..." << endl;
         
-        bool dead = false;
-        aDirection = computeDirection(aDirection, gMyPos, dead);
+        //bool dead = false;
+        //aDirection = computeDirection(aDirection, gMyPos, dead, gMap);
         
-        if (dead)
+        map<DIR, int> aMaxTurnMap = {{DOWN,0}, {UP,0}, {RIGHT,0}, {LEFT,0}};
+        for(auto& aDirMap: aMaxTurnMap)
+        {
+        	aDirMap.second = computeMaxTurnBeforeDead(aDirMap.first);
+        	cerr << "Direction " << dirToString[aDirMap.first] << " will be loosing in " << aDirMap.second << " turns !" << endl;
+		}
+        cerr << "Loosing in " << computeMaxTurnBeforeDead(aDirection) << " turns !" << endl;
+        
+		int maxValue = 0;      
+        for(auto& aDirMap: aMaxTurnMap)
+        {
+			if(maxValue <=  aDirMap.second)
+			{
+				aDirection = aDirMap.first;
+				maxValue = aDirMap.second;
+			}	
+        }
+        
+        if (maxValue == 0)
 			cout << "DEPLOY" << endl;
 		else
         	cout << dirToString[aDirection] << endl;
+        	
+        firstTurn = false;
     }
 }
