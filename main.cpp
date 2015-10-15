@@ -7,7 +7,8 @@
 
 using namespace std;
 
-#define MAX_TURNS 50
+#define MAX_TURNS 250
+#define MARGIN 20
 
 const int kEnemyPredictVal = -5;
 const int maxX = 30;
@@ -17,7 +18,7 @@ const int maxY = 15;
 typedef vector<vector<int> > MAP;
 MAP gMap(30, vector<int> (15, 0));
 pair<int, int> gMyPos;
-map<int, pair<int, int>> lastEnemyPos;
+vector<pair<int, int>> lastEnemyPos(4, make_pair(-1,-1));
 
 enum DIR : int {
 	UP = 0,
@@ -63,7 +64,7 @@ DIR computeDirection(DIR iDir, const pair<int, int> &iCurrentPos, bool&dead, con
     DIR aDir = iDir, forbiddenDir = static_cast<DIR>((iDir+2)%4);
     while(detectColision(aDir, iCurrentPos, iMap) && nbTurns < 3)
     {
-     	cerr  << "Collision detected, turning: (" << dirToString[aDir] << ", (" << iCurrentPos.first << "," << iCurrentPos.second << ")" << ", (" << getNextPos(aDir, iCurrentPos).first << "," <<getNextPos(aDir, iCurrentPos).second << ")" << endl;
+     //	cerr  << "Collision detected, turning: (" << dirToString[aDir] << ", (" << iCurrentPos.first << "," << iCurrentPos.second << ")" << ", (" << getNextPos(aDir, iCurrentPos).first << "," <<getNextPos(aDir, iCurrentPos).second << ")" << endl;
         aDir = static_cast<DIR>((aDir+1)%4) ;
         if(aDir == forbiddenDir)
         {
@@ -80,11 +81,6 @@ void cleanMapPredictions(){
 		for(int j=0;j<maxY; j++)
 			if(gMap[i][j] == kEnemyPredictVal)
 				gMap[i][j] = 0;
-}
-
-void initLastEnemyPos(int iPlayerCount){
-	for(int i=0;i< iPlayerCount; i++)
-		lastEnemyPos[i]=make_pair(-1, -1);
 }
 
 bool validEnemy(int iX, int iY){
@@ -106,19 +102,19 @@ void predictEnemyMove(int iID, pair<int, int>& iCurrentPos){
 
 	//nextMove = getNextPos(nextDir, iCurrentPos);
 	bool dead;
-	nextMove = computeDirection(enemyDir, iCurrentPos, dead, gMap);
+	nextMove = getNextPos(computeDirection(enemyDir, iCurrentPos, dead, gMap), iCurrentPos );
 	if(gMap[nextMove.first][nextMove.second] == 0)
 	gMap[nextMove.first][nextMove.second]= kEnemyPredictVal;
 
 }
 
 // in how many turn will we loose
-int computeMaxTurnBeforeDead(DIR iDir)
+int computeMaxTurnBeforeDead(DIR iDir, const MAP& iMap)
 {
-	if (detectColision(iDir, gMyPos, gMap))
+	if (detectColision(iDir, gMyPos, iMap))
 		return 0;
 	bool dead = false;
-	auto aPredMap = gMap;
+	auto aPredMap = iMap;
 	auto aPredPos = gMyPos;
 	int aTurns = 0;
 	while(!dead && aTurns < MAX_TURNS)
@@ -151,12 +147,11 @@ int main()
 {
     int playerCount;
     cin >> playerCount; cin.ignore();
-    initLastEnemyPos(playerCount);
 
     int myId;
     cin >> myId; cin.ignore();
 
-	DIR aDirection = DOWN;
+	DIR aDirection = RIGHT;
 	bool firstTurn = true;
 
     // game loop
@@ -199,7 +194,8 @@ int main()
             int removeX;
             int removeY;
             cin >> removeX >> removeY; cin.ignore();
-            gMap[removeX][removeY] = 0;
+            if (gMyPos != make_pair(removeX, removeY))
+            	gMap[removeX][removeY] = 0;
         }
 
         // Write an action using cout. DON'T FORGET THE "<< endl"
@@ -208,28 +204,43 @@ int main()
         //bool dead = false;
         //aDirection = computeDirection(aDirection, gMyPos, dead, gMap);
         
-        map<DIR, int> aMaxTurnMap = {{DOWN,0}, {UP,0}, {RIGHT,0}, {LEFT,0}};
+        // if blocked
+        auto next = getNextPos(aDirection, gMyPos);
+        int deployPredict = 0;
+        if (helperBots>0 && gMap[next.first][next.second] != 0 && gMap[next.first][next.second] != kEnemyPredictVal 
+			&& find(lastEnemyPos.begin(), lastEnemyPos.end(), next)==lastEnemyPos.end()) 
+        {
+        	// try if deploy helps
+        	auto tempMap = gMap;
+        	tempMap[next.first][next.second] = 0;
+        	deployPredict = computeMaxTurnBeforeDead(aDirection, tempMap);
+        	cerr << "Direction " << "DEPLOY" << " will be loosing in " << deployPredict << " turns !" << endl;
+		}
+        
+        map<DIR, int> aMaxTurnMap = {{aDirection,0}, {static_cast<DIR>((aDirection+1)%4),0}, {static_cast<DIR>((aDirection+2)%4),0}, {static_cast<DIR>((aDirection+3)%4),0}};
         for(auto& aDirMap: aMaxTurnMap)
         {
-        	aDirMap.second = computeMaxTurnBeforeDead(aDirMap.first);
+        	aDirMap.second = computeMaxTurnBeforeDead(aDirMap.first, gMap);
         	cerr << "Direction " << dirToString[aDirMap.first] << " will be loosing in " << aDirMap.second << " turns !" << endl;
 		}
-        cerr << "Loosing in " << computeMaxTurnBeforeDead(aDirection) << " turns !" << endl;
-        
-		int maxValue = 0;      
+		
+		int maxValue = 0;
+		DIR maxDir = aDirection;
         for(auto& aDirMap: aMaxTurnMap)
         {
-			if(maxValue <=  aDirMap.second)
+			if(maxValue <  aDirMap.second)
 			{
-				aDirection = aDirMap.first;
+				maxDir = aDirMap.first;
 				maxValue = aDirMap.second;
 			}	
         }
         
-        if (maxValue == 0)
+        if ((maxValue == 0 && helperBots>0) || deployPredict > maxValue + MARGIN)
 			cout << "DEPLOY" << endl;
-		else
+		else {
+			aDirection = maxDir;
         	cout << dirToString[aDirection] << endl;
+        }
         	
         firstTurn = false;
     }
