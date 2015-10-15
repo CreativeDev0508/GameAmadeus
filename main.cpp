@@ -18,9 +18,13 @@ enum DIR : int {
 	LEFT
 };
 
-pair<int, int> getNextPos(DIR iDir)
+
+map<DIR, string> dirToString = {{DOWN,"DOWN"}, {UP,"UP"}, {RIGHT,"RIGHT"}, {LEFT,"LEFT"}};
+	
+
+pair<int, int> getNextPos(DIR iDir, const pair<int, int> &iCurrentPos)
 {
-	auto aOutput = gMyPos;
+	auto aOutput = iCurrentPos;
 	switch(iDir)
 	{
 		case UP:
@@ -39,10 +43,24 @@ pair<int, int> getNextPos(DIR iDir)
 	return aOutput;
 }
 
-bool detectColision(DIR iDir)
+bool detectColision(DIR iDir, const pair<int, int> &iCurrentPos)
 {
-	pair<int, int> aNextPos = getNextPos(iDir);
+	pair<int, int> aNextPos = getNextPos(iDir, iCurrentPos);
 	return gMap[aNextPos.first][aNextPos.second] != 0;
+}
+
+DIR computeDirection(DIR iDir, const pair<int, int> &iCurrentPos, bool&dead)
+{
+    int nbTurns = 0;
+    DIR aDir = iDir;
+    while(detectColision(aDir, iCurrentPos) && nbTurns < 4)
+    {
+     	cerr  << "Collision detected, turning: (" << dirToString[aDir] << ", (" << iCurrentPos.first << "," << iCurrentPos.second << ")" << ", (" << getNextPos(aDir, iCurrentPos).first << "," <<getNextPos(aDir, iCurrentPos).second << ")" << endl;
+        aDir = static_cast<DIR>((aDir+1)%4) ;
+        nbTurns++;
+	}
+	dead = nbTurns == 4;
+    return aDir;
 }
 
 /**
@@ -57,8 +75,6 @@ int main()
     cin >> myId; cin.ignore();
 
 	DIR aDirection = DOWN;
-	map<DIR, string> dirToString = {{DOWN,"DOWN"}, {UP,"UP"}, {RIGHT,"RIGHT"}, {LEFT,"LEFT"}};
-	
 
     // game loop
     while (1) {
@@ -88,16 +104,11 @@ int main()
         // Write an action using cout. DON'T FORGET THE "<< endl"
         // To debug: cerr << "Debug messages..." << endl;
         
-        int nbTurns = 0;
-        while(detectColision(aDirection) && nbTurns < 4)
-        {
-        	cerr  << "Collision detected, turning: (" << dirToString[aDirection] << ", (" << gMyPos.first << "," << gMyPos.second << ")" << ", (" << getNextPos(aDirection).first << "," <<getNextPos(aDirection).second << ")" << endl;
-        	aDirection = static_cast<DIR>((aDirection+1)%4) ;
-        	nbTurns++;
-		}
-
-		if (nbTurns > 3)
-			cout << "DEPLOY";
+        bool dead = false;
+        aDirection = computeDirection(aDirection, gMyPos, dead);
+        
+        if (dead)
+			cout << "DEPLOY" << endl;
 		else
         	cout << dirToString[aDirection] << endl;
     }
